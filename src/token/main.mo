@@ -11,6 +11,7 @@ import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Int "mo:base/Int";
+import Int64 "mo:base/Int64";
 import Int32 "mo:base/Int32";
 import Iter "mo:base/Iter";
 import List "mo:base/List";
@@ -76,6 +77,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     */
     private var standard_: Text = "icrc1";
     private stable var name_: Text = "Motoko";
+    private stable var capRootBucketId = "yjx56-laaaa-aaaah-adwya-cai"; // cap bucket of the token
     private stable var symbol_: Text = "MOTOKO";
     private stable let decimals__: Nat8 = 8; // make decimals immutable across upgrades
     private stable var totalSupply_: Nat = 1000000000000; // 10000 $MOTOKO
@@ -589,15 +591,22 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
 
     // Hail the Vikings 
     public composite query func get_transactions(page : Nat32) : async Root.GetTransactionsResponseBorrowed {
-        let c : Root.Self = actor("yjx56-laaaa-aaaah-adwya-cai"); // cap bucket of the token
+        let c : Root.Self = actor(capRootBucketId);
         let transactions = await c.get_transactions({page = ?page; witness = false});
         return transactions;
     };
 
-    public composite query func get_transaction_pages() : async Nat64 {
-        let c : Root.Self = actor("yjx56-laaaa-aaaah-adwya-cai"); // cap bucket of the token
-        let total_txs = await c.size();
-        return total_txs / 64;
+    public composite query func get_transaction_pages() : async Int64 {
+        let c : Root.Self = actor(capRootBucketId);
+        let total_txs = Int64.fromNat64(await c.size());
+        let pages = total_txs / 64;
+        return if(Int64.rem(total_txs, 64) > 0) { pages + 1 } else { pages };
+    };
+
+    public composite query func get_transaction(txid : Nat64) : async Root.GetTransactionResponse {
+        let c : Root.Self = actor(capRootBucketId);
+        let transaction =  await c.get_transaction({id=txid; witness=false;});
+        return transaction;
     };
 
     public query func unclaimedTokens() : async Nat {
