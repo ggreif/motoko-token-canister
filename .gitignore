@@ -1,3 +1,4 @@
 .dfx/
 __pycache__/
 canister_ids.dev.json
+.DS_Store
