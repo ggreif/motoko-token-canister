@@ -596,6 +596,13 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         return transactions;
     };
 
+    public composite query func get_user_transactions(user : Principal, page : Nat32) : async Root.GetTransactionsResponseBorrowed {
+        let c : Root.Self = actor(capRootBucketId);
+        let transactions = await c.get_user_transactions({page = ?page; user = user; witness = false});
+        return transactions;
+    };
+
+
     public composite query func get_transaction_pages() : async Int64 {
         let c : Root.Self = actor(capRootBucketId);
         let total_txs = Int64.fromNat64(await c.size());
