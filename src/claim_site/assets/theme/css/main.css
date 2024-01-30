@@ -1,0 +1,75 @@
+:root {
+    --color-1: #000804;
+    --color-2: #03FD8E;
+    --grey-color-2: #A9A9A9;
+}
+
+body::-webkit-scrollbar {
+    width: 10px;
+}
+
+
+body::-webkit-scrollbar-track {
+    background-color: var(--color-1);
+}
+
+body::-webkit-scrollbar-thumb {
+    border-radius: 100px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+    background-color: var(--grey-color-2);
+}
+header{
+    box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2),0px 4px 5px 0px rgba(0,0,0,0.14),0px 1px 10px 0px rgba(0,0,0,0.12);
+}
+.collapse-site-menu {
+    background: url('/theme/img/bkg/hero-bg-mob-1.jpg');
+    background-size: cover;
+}
+
+main {
+    margin-top: 6.25rem;
+}
+
+.hm-sec-1 {
+    width: 100%;
+    background: url('https://d15bmhsw4m27if.cloudfront.net/col/motoko/cover.jpg');
+    border-radius: 12px;
+    background-size: cover !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+}
+
+.hm-sec-1 .chakra-container {
+    justify-content: center;
+    align-items: center;
+}
+
+.hm-sec-1 .chakra-container>div {
+    margin-top: auto;
+}
+
+.prev-holder {
+    background-position: center !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+}
+
+@media (max-width: 1600px) {
+    .hm-sec-1 .chakra-container h2 {
+        font-size: 44px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .hm-sec-1 .chakra-container h2 {
+        font-size: 38px;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .hm-sec-1 .chakra-container h2 {
+        font-size: 34px;
+    }
+}

@@ -1,9 +1,15 @@
 {
   "canisters": {
-    "icrc1": {
+    "token": {
       "main": "./src/token/main.mo",
       "type": "motoko",
       "args" : "--compacting-gc"
+    },
+    "claim_site": {
+      "type": "assets",
+      "source": [
+        "src/claim_site/assets"
+      ]
     }
   },
   "networks": {

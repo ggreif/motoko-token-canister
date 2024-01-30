@@ -1,0 +1,20 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1151 687" width="300" height="179">
+	<title>Medium-Symbol-Black-RGB-svg</title>
+	<style>
+		.s0 { fill: #000000 } 
+		.s1 { fill: none } 
+	</style>
+	<g id="Layer_2">
+		<filter id="f0">
+			<feFlood flood-color="#ffffff" flood-opacity="1" />
+			<feBlend mode="normal" in2="SourceGraphic"/>
+			<feComposite in2="SourceAlpha" operator="in" />
+		</filter>
+		<g id="Symbol" filter="url(#f0)">
+			<path id="Layer" class="s0" d="m641.5 315.3c0 163.6-131.8 296.3-294.4 296.3-162.5 0-294.3-132.7-294.3-296.3 0-163.7 131.8-296.4 294.3-296.4 162.6 0 294.4 132.7 294.4 296.4z"/>
+			<path id="Layer" class="s0" d="m964.3 315.3c0 154-65.9 279-147.1 279-81.3 0-147.2-125-147.2-279 0-154.1 65.9-279 147.2-279 81.2 0 147.1 124.9 147.1 279z"/>
+			<path id="Layer" class="s0" d="m1096.4 315.3c0 138-23.2 249.9-51.8 249.9-28.5 0-51.7-111.9-51.7-249.9 0-138.1 23.2-250 51.8-250 28.5 0 51.7 111.9 51.7 250z"/>
+			<path id="Layer" fill-rule="evenodd" class="s1" d="m1391.8 889.1h-103.9v0.4h-1410.4v-0.4h-119.5v-1150.1h296.3v0.2h1041.2v-0.2h296.3zm-1337.5-853.5v557.6h1041.2v-557.6z"/>
+		</g>
+	</g>
+</svg>

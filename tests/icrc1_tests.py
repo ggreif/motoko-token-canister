@@ -4,7 +4,7 @@ import unittest
 import ic
 from pocket_ic import PocketIC
 
-build_dir = os.environ.get('build_dir', '.dfx/local/canisters/icrc1')
+build_dir = os.environ.get('build_dir', '.dfx/local/canisters/token')
 
 class ICRC1LedgerTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -14,31 +14,20 @@ class ICRC1LedgerTests(unittest.TestCase):
         self.owner = ic.Principal(b"Owner")
 
         with open(
-            os.path.join(build_dir, "icrc1.did"), "r", encoding="utf-8"
+            os.path.join(build_dir, "token.did"), "r", encoding="utf-8"
         ) as candid_file:
             candid = candid_file.read()
 
         # constraints
-        self.SUPPLY = 10000000000000
+        self.SUPPLY = 1000000000000
         self.FEE = 1000
         self.DECIMALS = 8
-        self.NAME = "ICRC1"
-        self.SYMBOL = "ICRC1"
+        self.NAME = "Motoko"
+        self.SYMBOL = "MOTOKO"
         self.USER_A_AMOUNT = 10000
         # Specify the init args for the ledger canister.
-        init_args = {
-         'initArgs': {
-            'totalSupply': self.SUPPLY,
-            'decimals': self.DECIMALS,
-            'fee': self.FEE,
-            'name': self.NAME,
-            'symbol': self.SYMBOL,
-            'metadata': [],
-            'owner': self.owner.to_str(),
-         },
-         'upgradeArgs': None
-        }
-        with open(os.path.join(build_dir, "icrc1.wasm"), "rb") as wasm_file:
+        init_args = { "tokenOwner" : "2tlvc-vqaaa-aaaah-adwxa-cai" }
+        with open(os.path.join(build_dir, "token.wasm"), "rb") as wasm_file:
             wasm_module = wasm_file.read()
 
         self.ledger: ic.Canister = self.pic.create_and_install_canister_with_candid(

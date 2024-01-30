@@ -4,6 +4,7 @@ import Trie "mo:base/Trie";
 import Principal "mo:base/Principal";
 import Array "mo:base/Array";
 import Option "mo:base/Option";
+import Text "mo:base/Text";
 import Blob "mo:base/Blob";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
@@ -13,17 +14,24 @@ import Int "mo:base/Int";
 import Int32 "mo:base/Int32";
 import Iter "mo:base/Iter";
 import List "mo:base/List";
+import Map "mo:base/HashMap";
 import Time "mo:base/Time";
+import Timer "mo:base/Timer";
 import TokenTypes "./lib/Internals";
 import AID "./lib/AID";
+import EAID "./lib/EAID";
 import Hex "./lib/Hex";
 import Binary "./lib/Binary";
 import SHA224 "./lib/SHA224";
 import DRC202 "./lib/DRC202";
 import ICRC1 "./lib/ICRC1";
-import Internals "lib/Internals";
+import Internals "./lib/Internals";
+import MotokoNft "./lib/MotokoNFT";
+import Error "mo:base/Error";
+import Cap "Cap";
+import Root "Root";
 
-shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
+shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
 
     type Metadata = TokenTypes.Metadata;
     type Gas = TokenTypes.Gas;
@@ -62,23 +70,30 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
     /*
     * Config 
     */
-    private stable var FEE_TO: AccountId = _getAccountId(Principal.toText(args.initArgs.owner));
-    private let MAX_MEMORY: Nat = 23*1024*1024*1024; // 23G
-
+    private stable var FEE_TO: AccountId = _getAccountId(Principal.toText(args.tokenOwner));
     /* 
     * State Variables 
     */
     private var standard_: Text = "icrc1";
-    private stable var name_: Text = Option.get(args.initArgs.name, "");
-    private stable var symbol_: Text = Option.get(args.initArgs.symbol, "");
-    private stable let decimals__: Nat8 = args.initArgs.decimals; // make decimals immutable across upgrades
-    private stable var totalSupply_: Nat = args.initArgs.totalSupply;
-    private stable var fee_: Nat = args.initArgs.fee;
-    private stable var metadata_: [Metadata] = Option.get(args.initArgs.metadata, []);
+    private stable var name_: Text = "Motoko";
+    private stable var symbol_: Text = "MOTOKO";
+    private stable let decimals__: Nat8 = 8; // make decimals immutable across upgrades
+    private stable var totalSupply_: Nat = 1000000000000; // 10000 $MOTOKO
+    private stable var fee_: Nat = 1000; // 0.00001 $MOTOKO
+    private stable var metadata_: [Metadata] = [
+        {
+            // logo from collection image
+            content = "data:image/png;base64,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";
+            name = "logo";
+        }
+    ];
     private stable var index: Nat = 0;
     private stable var balances: Trie.Trie<AccountId, Nat> = Trie.empty();
+    private var cap: ?Cap.Cap = null;
     private var drc202 = DRC202.DRC202({EN_DEBUG = false; MAX_CACHE_TIME = 3 * 30 * 24 * 3600 * 1000000000; MAX_CACHE_NUMBER_PER = 100; MAX_STORAGE_TRIES = 2; }, standard_);
     private stable var drc202_lastStorageTime : Time.Time = 0;
+    
+    let motoko_nft : MotokoNft.Self = actor("oeee4-qaaaa-aaaak-qaaeq-cai"); // official motok nft snapshot
 
     /* 
     * Local Functions
@@ -88,9 +103,11 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
     private func _getAccountIdFromPrincipal(_p: Principal, _sa: ?[Nat8]): AccountId{
         var a = AID.principalToAccountBlob(_p, _sa);
         return a;
-    }; 
-    private stable let owner_: AccountId = _getAccountId(Principal.toText(args.initArgs.owner));
-    private stable let owner_account: Account = { owner = args.initArgs.owner; subaccount = null; };
+    };     
+    private stable let owner_: AccountId = AID.principalToAccountBlob(
+        args.tokenOwner, ?Internals.minter_subaccount
+    );
+    private stable let owner_account: Account = { owner = args.tokenOwner; subaccount = ?Blob.fromArray(Internals.minter_subaccount); };
 
     private func _getBalance(_a: AccountId): Nat{
         switch(Trie.get(balances, keyb(_a), Blob.equal)){
@@ -360,6 +377,8 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
         return _getBalance(_icrc1_get_account(_owner));
     };
     public shared(msg) func icrc1_transfer(_args: TransferArgs) : async ({ #Ok: Nat; #Err: TransferError; }) {
+        // locked
+        // assert(Principal.isController(msg.caller));
         switch(_args.fee){
             case(?(icrc1_fee)){
                 if (icrc1_fee < fee_){ return #Err(#BadFee({ expected_fee = fee_ })) };
@@ -384,6 +403,25 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
         return _icrc1_receipt(res, from);
     };
 
+    // CAP records
+    private func addRecord(
+        caller: Principal,
+        op: Text, 
+        details: [(Text, Root.DetailValue)]
+        ): async () {
+        let c = switch(cap) {
+            case(?c) { c };
+            case(_) { Cap.Cap(Principal.fromActor(this), 2_000_000_000_000) };
+        };
+        cap := ?c;
+        let record: Root.IndefiniteEvent = {
+            operation = op;
+            details = details;
+            caller = caller;
+        };
+        // don't wait for result, faster
+        ignore c.insert(record);
+    };
     // drc202
     public query func drc202_getConfig() : async DRC202.Setting{
         return drc202.getConfig();
@@ -450,6 +488,11 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
 
     system func preupgrade() {
         __drc202DataNew := ?drc202.getData();
+        eligible_tokens := Iter.toArray(eligibleTokens.entries());
+        claimed_tokens := Iter.toArray(claimedTokens.entries());
+        claimed_txs := Iter.toArray(claimedTxs.entries());
+        airdroped_tokens := Iter.toArray(airdropedTokens.entries());
+        airdrop_txs := Iter.toArray(airdropTxs.entries())
     };
     system func postupgrade() {
         switch(__drc202DataNew){
@@ -465,6 +508,269 @@ shared(msg) actor class ICRC1Canister(args: Internals.CanisterArgs) = this {
                 };
             };
         };
+        eligible_tokens := [];
+        claimed_tokens := [];
+        airdroped_tokens := [];
+        claimed_txs := [];
+        airdrop_txs := [];
     };
 
+    /** 
+      $MOTOKO claim methods & states for transparency
+    **/
+    type TokenClaimTx = {
+        tx : Txid;
+        tokens : Nat;
+    };
+    type TokenClaimStatus = {
+        #Airdroped : TokenClaimTx;
+        #Claimed : TokenClaimTx;
+        #Unclaimed : Nat;
+    };
+
+    private stable var raw_snapshot : [(MotokoNft.TokenIndex, MotokoNft.AccountIdentifier)] = [];
+    private stable var raw_snapshot_time : Int = 0;
+    private stable var snapshotTimer : Timer.TimerId = 0;
+
+    private stable var eligible_tokens : [(MotokoNft.AccountIdentifier, Nat)] = [];
+    private var eligibleTokens : Map.HashMap<MotokoNft.AccountIdentifier, Nat> = Map.fromIter(
+        eligible_tokens.vals(), 0, 
+        Text.equal, Text.hash
+    );
+
+    private stable var claimed_tokens : [(Principal, Nat)] = [];
+    private var claimedTokens : Map.HashMap<Principal, Nat> = Map.fromIter(
+        claimed_tokens.vals(), 0,
+        Principal.equal, Principal.hash
+    );
+
+    private stable var claimed_txs : [(Principal, Blob)] = [];
+    private var claimedTxs : Map.HashMap<Principal, Blob> = Map.fromIter(
+        claimed_txs.vals(), 0,
+        Principal.equal, Principal.hash
+    );
+
+    private stable var airdroped_tokens : [(Principal, Nat)] = [];
+    private var airdropedTokens : Map.HashMap<Principal, Nat> = Map.fromIter(
+        claimed_tokens.vals(), 0,
+        Principal.equal, Principal.hash
+    );
+
+    private stable var airdrop_txs : [(Principal, Blob)] = [];
+    private var airdropTxs : Map.HashMap<Principal, Blob> = Map.fromIter(
+        airdrop_txs.vals(), 0,
+        Principal.equal, Principal.hash
+    );
+
+
+    // helper functions
+    private func createEligibleTokenList() {
+        for (x in raw_snapshot.vals()) {
+            let _tokens = switch(eligibleTokens.get(x.1)){
+                case(?c) {c};
+                case(_) {0};
+            };
+            eligibleTokens.put(x.1, _tokens + 1);
+        };
+        return;
+    };
+
+    // Hail the Vikings 
+    public composite query func get_transactions() : async Text {
+        return "hello";
+    };
+
+    public query func getRawSnapshot() : async {
+        snapshot : [(MotokoNft.TokenIndex, MotokoNft.AccountIdentifier)];
+        snapshot_time : Int
+    } {
+        return {
+            snapshot = raw_snapshot;
+            snapshot_time = raw_snapshot_time
+        };
+    };
+
+    public query func getEligibleTokensSnap() : async [(MotokoNft.AccountIdentifier, Nat)] {
+        return Iter.toArray(eligibleTokens.entries());
+    };
+
+    private func findEligibleTokens(user: Principal) : Nat {
+        var totalTokens : Nat = 0;
+        let accountIdx : [Nat] = Iter.toArray(Iter.range(0, 50));
+        var address : Text = "";
+        for(i in accountIdx.vals()) {
+          let subaccount_array : [Nat8] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Nat8.fromNat(i)];
+          address := EAID.fromPrincipal(user, ?subaccount_array);
+          totalTokens += Option.get(eligibleTokens.get(address), 0);
+        };
+        return totalTokens;
+    };
+
+    public shared query(msg) func getEligibleTokenOfUser(user : Principal) : async TokenClaimStatus {
+        switch(claimedTokens.get(user)){
+            case(?tokens){
+                switch(claimedTxs.get(msg.caller)){
+                    case(?tx){
+                        return #Claimed({
+                            tx = tx;
+                            tokens = tokens;
+                        });
+                    };
+                    case(_){
+                        return #Unclaimed(tokens);
+                    };
+                };
+            };
+            case(_){
+                switch(airdropedTokens.get(user)) {
+                    case(?tokens) {
+                        switch(airdropTxs.get(user)){
+                            case(?tx){
+                                return #Airdroped({
+                                    tx = tx;
+                                    tokens = tokens;
+                                });
+                            };
+                            case(_){
+                                return #Unclaimed(tokens);
+                            };
+                        };
+                    };
+                    case(_){};
+                };
+            };
+        };
+        return #Unclaimed(findEligibleTokens(user));
+    };
+
+    // updates
+    public shared(msg) func createSnap() : async () {
+        assert(Principal.isController(msg.caller));
+        // Tuesday, January 30, 2024 3:00:00 PM UTC with 1 minute gap
+        if(raw_snapshot_time > 0) {
+            if(Time.now() < (1706626800000000000) or Time.now() > (1706626860000000000)) {
+                throw Error.reject("not allowed in this time");
+            };
+        };
+        raw_snapshot := await motoko_nft.getRegistry();
+        raw_snapshot_time := Time.now();
+        createEligibleTokenList();
+    };
+
+    public shared(msg) func claimTokens() : async TokenClaimStatus {
+        switch(airdropedTokens.get(msg.caller)) {
+            case(?tokens) {
+                switch(airdropTxs.get(msg.caller)){
+                    case(?tx){
+                        return #Airdroped({
+                                tx = tx;
+                                    tokens = tokens;
+                        });
+                    };
+                    case(_){
+                        return #Unclaimed(tokens);
+                    };
+                 };
+            };
+            case(_){};
+        };
+        switch(claimedTokens.get(msg.caller)){
+            case(?tokens){
+                switch(claimedTxs.get(msg.caller)){
+                    case(?tx){
+                        return #Claimed({
+                            tx = tx;
+                            tokens = tokens;
+                        });
+                    };
+                    case(_){
+                        return #Unclaimed(0);
+                    };
+                }; 
+            };
+            case(_){
+                let tokens = findEligibleTokens(msg.caller);
+                if(tokens > 0){
+                    let user = AID.principalToAccountBlob(msg.caller, null);
+                    let tokenAmount = tokens * 100000000;
+                    let res = _transferFrom(msg.caller, owner_, user, tokenAmount - fee_, null, null);
+                    switch(res) {
+                        case(#ok(tx)){
+                            claimedTokens.put(msg.caller, tokens);
+                            claimedTxs.put(msg.caller, tx);
+                            return #Claimed({
+                             tx = tx;
+                             tokens = tokens;
+                            });
+                        };
+                        case(_){
+                            throw Error.reject("unexpected error");
+                        };
+                    };
+                };
+                return #Unclaimed(0);
+            };
+        };
+    };
+
+    public shared(msg) func airdropTokens(user : Principal) : async TokenClaimStatus {
+        assert(Principal.isController(msg.caller));
+        switch(airdropedTokens.get(user)) {
+            case(?tokens) {
+                switch(airdropTxs.get(user)){
+                    case(?tx){
+                        return #Airdroped({
+                                tx = tx;
+                                tokens = tokens;
+                        });
+                    };
+                    case(_){
+                        return #Unclaimed(tokens);
+                    };
+                 };
+            };
+            case(_){};
+        };
+        switch(claimedTokens.get(user)){
+            case(?tokens){
+                switch(claimedTxs.get(user)){
+                    case(?tx){
+                        return #Claimed({
+                            tx = tx;
+                            tokens = tokens;
+                        });
+                    };
+                    case(_){
+                        return #Unclaimed(0);
+                    };
+                }; 
+            };
+            case(_){
+                let tokens = findEligibleTokens(user);
+                if(tokens > 0){
+                    let _user = AID.principalToAccountBlob(user, null);
+                    let tokenAmount = tokens * 100000000;
+                    let res = _transferFrom(msg.caller, owner_, _user, tokenAmount - fee_, null, null);
+                    switch(res) {
+                        case(#ok(tx)){
+                            airdropedTokens.put(user, tokens);
+                            airdropTxs.put(user, tx);
+                            return #Airdroped({
+                             tx = tx;
+                             tokens = tokens;
+                            });
+                        };
+                        case(_){
+                            throw Error.reject("unexpected error");
+                        };
+                    };
+                };
+                return #Unclaimed(0);
+            };
+        };
+        return #Airdroped({
+            tx = Blob.fromArray(Internals.minter_subaccount);
+            tokens = 0;
+        });
+    };
 };
