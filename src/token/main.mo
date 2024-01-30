@@ -400,10 +400,22 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             drc202_lastStorageTime := Time.now();
             ignore drc202.store(); 
         };
+        ignore addRecord(
+            msg.caller, "transfer",
+            [
+                ("to", #Principal(_args.to.owner)),
+                ("value", #U64(u64(_args.amount))),
+                ("fee", #U64(u64(fee_)))
+            ]
+        );
         return _icrc1_receipt(res, from);
     };
 
     // CAP records
+    private func u64(i: Nat): Nat64 {
+        Nat64.fromNat(i)
+    };
+
     private func addRecord(
         caller: Principal,
         op: Text, 
@@ -576,8 +588,20 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     // Hail the Vikings 
-    public composite query func get_transactions() : async Text {
-        return "hello";
+    public composite query func get_transactions(page : Nat32) : async Root.GetTransactionsResponseBorrowed {
+        let c : Root.Self = actor("yjx56-laaaa-aaaah-adwya-cai"); // cap bucket of the token
+        let transactions = await c.get_transactions({page = ?page; witness = false});
+        return transactions;
+    };
+
+    public composite query func get_transaction_pages() : async Nat64 {
+        let c : Root.Self = actor("yjx56-laaaa-aaaah-adwya-cai"); // cap bucket of the token
+        let total_txs = await c.size();
+        return total_txs / 64;
+    };
+
+    public query func unclaimedTokens() : async Nat {
+        return _getBalance(owner_);
     };
 
     public query func getRawSnapshot() : async {
@@ -658,13 +682,14 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     public shared(msg) func claimTokens() : async TokenClaimStatus {
+        assert(Principal.isController(msg.caller));
         switch(airdropedTokens.get(msg.caller)) {
             case(?tokens) {
                 switch(airdropTxs.get(msg.caller)){
                     case(?tx){
                         return #Airdroped({
                                 tx = tx;
-                                    tokens = tokens;
+                                tokens = tokens;
                         });
                     };
                     case(_){
@@ -698,6 +723,15 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                         case(#ok(tx)){
                             claimedTokens.put(msg.caller, tokens);
                             claimedTxs.put(msg.caller, tx);
+                            ignore addRecord(
+                                msg.caller, "claimTokens",
+                                [
+                                    ("to", #Principal(msg.caller)),
+                                    ("value", #U64(u64(tokenAmount))),
+                                    ("fee", #U64(u64(fee_)))
+                                ]
+                            );
+
                             return #Claimed({
                              tx = tx;
                              tokens = tokens;
@@ -755,6 +789,14 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                         case(#ok(tx)){
                             airdropedTokens.put(user, tokens);
                             airdropTxs.put(user, tx);
+                            ignore addRecord(
+                                msg.caller, "airdropTokens",
+                                [
+                                    ("to", #Principal(user)),
+                                    ("value", #U64(u64(tokenAmount))),
+                                    ("fee", #U64(u64(fee_)))
+                                ]
+                            );
                             return #Airdroped({
                              tx = tx;
                              tokens = tokens;
