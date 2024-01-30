@@ -89,5 +89,5 @@ module {
      initArgs : InitArgs;
      upgradeArgs : ?UpgradeArgs;
   };
-  
+  public let minter_subaccount : [Nat8]= [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1];
 };
