@@ -506,8 +506,9 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         claimed_tokens := Iter.toArray(claimedTokens.entries());
         claimed_txs := Iter.toArray(claimedTxs.entries());
         airdroped_tokens := Iter.toArray(airdropedTokens.entries());
-        airdrop_txs := Iter.toArray(airdropTxs.entries())
+        airdrop_txs := Iter.toArray(airdropTxs.entries());
     };
+
     system func postupgrade() {
         switch(__drc202DataNew){
             case(?(data)){
@@ -522,9 +523,20 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                 };
             };
         };
+
+        eligibleTokens := Map.fromIter<MotokoNft.AccountIdentifier, Nat>(eligible_tokens.vals(), 1, Text.equal, Text.hash);
+
+        claimedTokens := Map.fromIter<Principal, Nat>(claimed_tokens.vals(), 1, Principal.equal, Principal.hash);
+        airdropedTokens := Map.fromIter<Principal, Nat>(airdroped_tokens.vals(), 1, Principal.equal, Principal.hash);
+
+        claimedTxs := Map.fromIter<Principal, Blob>(claimed_txs.vals(), 1, Principal.equal, Principal.hash);
+        airdropTxs := Map.fromIter<Principal, Blob>(airdrop_txs.vals(), 1, Principal.equal, Principal.hash);
+
         eligible_tokens := [];
+        
         claimed_tokens := [];
         airdroped_tokens := [];
+
         claimed_txs := [];
         airdrop_txs := [];
     };
@@ -566,7 +578,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
 
     private stable var airdroped_tokens : [(Principal, Nat)] = [];
     private var airdropedTokens : Map.HashMap<Principal, Nat> = Map.fromIter(
-        claimed_tokens.vals(), 0,
+        airdroped_tokens.vals(), 0,
         Principal.equal, Principal.hash
     );
 
@@ -646,7 +658,26 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         return totalTokens;
     };
 
-    public shared query(msg) func getEligibleTokenOfUser(user : Principal) : async TokenClaimStatus {
+    private func _getEligibleTokenOfUser(user: Principal) : TokenClaimStatus {
+        switch(airdropedTokens.get(user)) {
+            case(?tokens) {
+                switch(airdropTxs.get(user)){
+                    case(?tx){
+                      return #Airdroped({
+                            tx = tx;
+                            tokens = tokens;
+                      });
+                    };
+                    case(_){
+                      return #Airdroped({
+                            tx = "";
+                            tokens = tokens;
+                      });
+                    };
+                };
+            };
+            case(_){};
+        };
         switch(claimedTokens.get(user)){
             case(?tokens){
                 switch(claimedTxs.get(msg.caller)){
@@ -657,30 +688,23 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                         });
                     };
                     case(_){
-                        return #Unclaimed(tokens);
+                        return #Claimed({
+                            tx = "";
+                            tokens = tokens;
+                        });
                     };
                 };
             };
-            case(_){
-                switch(airdropedTokens.get(user)) {
-                    case(?tokens) {
-                        switch(airdropTxs.get(user)){
-                            case(?tx){
-                                return #Airdroped({
-                                    tx = tx;
-                                    tokens = tokens;
-                                });
-                            };
-                            case(_){
-                                return #Unclaimed(tokens);
-                            };
-                        };
-                    };
-                    case(_){};
-                };
-            };
+            case(_){};
         };
         return #Unclaimed(findEligibleTokens(user));
+    };
+
+    public shared query(msg) func getEligibleTokenOfUser(user : Principal) : async TokenClaimStatus {
+         switch(_getEligibleTokenOfUser(msg.caller)) {
+            case(#Unclaimed(tokens)){ return #Unclaimed(tokens) };
+            case(status){ return status };
+         };
     };
 
     // updates
@@ -699,38 +723,9 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
 
     public shared(msg) func claimTokens() : async TokenClaimStatus {
         assert(Principal.isController(msg.caller));
-        switch(airdropedTokens.get(msg.caller)) {
-            case(?tokens) {
-                switch(airdropTxs.get(msg.caller)){
-                    case(?tx){
-                        return #Airdroped({
-                                tx = tx;
-                                tokens = tokens;
-                        });
-                    };
-                    case(_){
-                        return #Unclaimed(tokens);
-                    };
-                 };
-            };
-            case(_){};
-        };
-        switch(claimedTokens.get(msg.caller)){
-            case(?tokens){
-                switch(claimedTxs.get(msg.caller)){
-                    case(?tx){
-                        return #Claimed({
-                            tx = tx;
-                            tokens = tokens;
-                        });
-                    };
-                    case(_){
-                        return #Unclaimed(0);
-                    };
-                }; 
-            };
-            case(_){
-                let tokens = findEligibleTokens(msg.caller);
+
+        switch(_getEligibleTokenOfUser(msg.caller)) {
+            case(#Unclaimed(tokens)){
                 if(tokens > 0){
                     let user = AID.principalToAccountBlob(msg.caller, null);
                     let tokenAmount = tokens * 100000000;
@@ -749,8 +744,8 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                             );
 
                             return #Claimed({
-                             tx = tx;
-                             tokens = tokens;
+                                tx = tx;
+                                tokens = tokens;
                             });
                         };
                         case(_){
@@ -760,44 +755,21 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                 };
                 return #Unclaimed(0);
             };
+
+            case(status){
+                return status;
+            };
+
         };
     };
 
     public shared(msg) func airdropTokens(user : Principal) : async TokenClaimStatus {
+        
         assert(Principal.isController(msg.caller));
-        switch(airdropedTokens.get(user)) {
-            case(?tokens) {
-                switch(airdropTxs.get(user)){
-                    case(?tx){
-                        return #Airdroped({
-                                tx = tx;
-                                tokens = tokens;
-                        });
-                    };
-                    case(_){
-                        return #Unclaimed(tokens);
-                    };
-                 };
-            };
-            case(_){};
-        };
-        switch(claimedTokens.get(user)){
-            case(?tokens){
-                switch(claimedTxs.get(user)){
-                    case(?tx){
-                        return #Claimed({
-                            tx = tx;
-                            tokens = tokens;
-                        });
-                    };
-                    case(_){
-                        return #Unclaimed(0);
-                    };
-                }; 
-            };
-            case(_){
-                let tokens = findEligibleTokens(user);
-                if(tokens > 0){
+
+        switch(_getEligibleTokenOfUser(user)){
+            case(#Unclaimed(tokens)) {
+              if(tokens > 0){
                     let _user = AID.principalToAccountBlob(user, null);
                     let tokenAmount = tokens * 100000000;
                     let res = _transferFrom(msg.caller, owner_, _user, tokenAmount - fee_, null, null);
@@ -822,13 +794,84 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                             throw Error.reject("unexpected error");
                         };
                     };
-                };
-                return #Unclaimed(0);
+              };
+              return #Unclaimed(0);
+            };
+            case(status){
+                return status;
             };
         };
-        return #Airdroped({
-            tx = Blob.fromArray(Internals.minter_subaccount);
-            tokens = 0;
-        });
     };
+
+    // public shared(msg) func checkData(start : Nat, end : Nat) : async (Nat, Nat) {
+    //     assert(Principal.isController(msg.caller));
+        // createEligibleTokenList();
+        // let affected_pages :[Nat] = Iter.toArray(Iter.range(start, end));
+        // let c : Root.Self = actor(capRootBucketId);
+        // for (page in affected_pages.vals()){
+        //     let transactions = await c.get_transactions({page = ?Nat32.fromNat(page); witness = false});
+        //     for(event in transactions.data.vals()){
+        //         if(event.operation == "claimTokens"){
+        //             var p : Principal = Principal.fromText("aaaaa-aa");
+        //             var v : Nat64 = 0;
+        //             for(details in event.details.vals()) {
+        //                 if(details.0 == "to") {
+        //                     switch(details.1){
+        //                         case(#Principal(user)){
+        //                             p := user;
+        //                         };
+        //                         case(_){};
+        //                     };
+        //                 };
+        //                 if(details.0 == "value"){
+        //                     switch(details.1){
+        //                         case(#U64(value)){
+        //                             v := value;
+        //                         };
+        //                         case(_){};
+        //                     };
+        //                 };
+        //             };
+        //             if (p != Principal.fromText("aaaaa-aa") and v != 0){
+        //                 claimedTokens.put(p, Nat64.toNat(v / 100000000));
+        //             };
+        //         };
+        //         if(event.operation == "airdropTokens"){
+        //             var p : Principal = Principal.fromText("aaaaa-aa");
+        //             var v : Nat64 = 0;
+        //             for(details in event.details.vals()) {
+        //                 if(details.0 == "to") {
+        //                     switch(details.1){
+        //                         case(#Principal(user)){
+        //                             p := user;
+        //                         };
+        //                         case(_){};
+        //                     };
+        //                 };
+        //                 if(details.0 == "value"){
+        //                     switch(details.1){
+        //                         case(#U64(value)){
+        //                             v := value;
+        //                         };
+        //                         case(_){};
+        //                     };
+        //                 };
+        //             };
+        //             if (p != Principal.fromText("aaaaa-aa") and v != 0){
+        //                 airdropedTokens.put(p, Nat64.toNat(v / 100000000));
+        //             };
+        //         };
+        //     };
+        // }; 
+    //     var aTokens = 0;
+    //     var cTokens = 0;
+    //     for(x in Iter.toArray(airdropedTokens.entries()).vals()){
+    //         aTokens += x.1;
+    //     };       
+    //     for(x in Iter.toArray(claimedTokens.entries()).vals()){
+    //         cTokens += x.1;
+    //     };       
+
+    //     return (aTokens, cTokens);
+    // };
 };
