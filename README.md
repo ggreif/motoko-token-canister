@@ -10,3 +10,7 @@
 # Build & Deploy
 
 Checkout `deploy-icrc1.example.sh`
+
+# Token Claim Site
+
+https://2uktw-yiaaa-aaaah-adwxq-cai.icp0.io/
