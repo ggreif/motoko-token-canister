@@ -661,39 +661,34 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     private func _getEligibleTokenOfUser(user: Principal) : TokenClaimStatus {
         switch(airdropedTokens.get(user)) {
             case(?tokens) {
-                switch(airdropTxs.get(user)){
-                    case(?tx){
-                      return #Airdroped({
-                            tx = tx;
-                            tokens = tokens;
-                      });
-                    };
-                    case(_){
-                      return #Airdroped({
+                // switch(airdropTxs.get(user)){
+                //     case(?tx){
+                //       return #Airdroped({
+                //             tx = tx;
+                //             tokens = tokens;
+                //       });
+                //     };
+                //     case(_){
+                //       return #Airdroped({
+                //             tx = "";
+                //             tokens = tokens;
+                //       });
+                //     };
+                // };
+                return #Airdroped({
                             tx = "";
                             tokens = tokens;
-                      });
-                    };
-                };
+                 });
             };
             case(_){};
         };
         switch(claimedTokens.get(user)){
             case(?tokens){
-                switch(claimedTxs.get(msg.caller)){
-                    case(?tx){
-                        return #Claimed({
-                            tx = tx;
-                            tokens = tokens;
-                        });
-                    };
-                    case(_){
-                        return #Claimed({
-                            tx = "";
-                            tokens = tokens;
-                        });
-                    };
-                };
+
+                return #Claimed({
+                    tx = "";
+                    tokens = tokens;
+                });
             };
             case(_){};
         };
@@ -701,9 +696,10 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     public shared query(msg) func getEligibleTokenOfUser(user : Principal) : async TokenClaimStatus {
-         switch(_getEligibleTokenOfUser(msg.caller)) {
-            case(#Unclaimed(tokens)){ return #Unclaimed(tokens) };
-            case(status){ return status };
+         switch(_getEligibleTokenOfUser(user)) {
+            case(#Unclaimed(tokens)){ return #Unclaimed(tokens); };
+            case(#Airdroped(status)){ return #Airdroped(status); };
+            case(#Claimed(status)){ return #Claimed(status); };
          };
     };
 
@@ -722,7 +718,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     public shared(msg) func claimTokens() : async TokenClaimStatus {
-        assert(Principal.isController(msg.caller));
+        // assert(Principal.isController(msg.caller));
 
         switch(_getEligibleTokenOfUser(msg.caller)) {
             case(#Unclaimed(tokens)){
@@ -803,7 +799,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         };
     };
 
-    // public shared(msg) func checkData(start : Nat, end : Nat) : async (Nat, Nat) {
+    // public shared(msg) func checkData(user : Principal) : async (?Nat, ?Nat) {
     //     assert(Principal.isController(msg.caller));
         // createEligibleTokenList();
         // let affected_pages :[Nat] = Iter.toArray(Iter.range(start, end));
@@ -871,7 +867,6 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     //     for(x in Iter.toArray(claimedTokens.entries()).vals()){
     //         cTokens += x.1;
     //     };       
-
-    //     return (aTokens, cTokens);
+    //     return (airdropedTokens.get(user), claimedTokens.get(user));
     // };
 };
