@@ -378,6 +378,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     public query func icrc1_balance_of(_owner: Account) : async (balance: Nat){
         return _getBalance(_icrc1_get_account(_owner));
     };
+
     public shared(msg) func icrc1_transfer(_args: TransferArgs) : async ({ #Ok: Nat; #Err: TransferError; }) {
         // locked
         // assert(Principal.isController(msg.caller));
@@ -591,6 +592,9 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
 
     // helper functions
     private func createEligibleTokenList() {
+        // reset before creating new list
+        eligible_tokens := [];
+        eligibleTokens := Map.fromIter<MotokoNft.AccountIdentifier, Nat>([].vals(), 1, Text.equal, Text.hash);
         for (x in raw_snapshot.vals()) {
             let _tokens = switch(eligibleTokens.get(x.1)){
                 case(?c) {c};
@@ -661,20 +665,6 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     private func _getEligibleTokenOfUser(user: Principal) : TokenClaimStatus {
         switch(airdropedTokens.get(user)) {
             case(?tokens) {
-                // switch(airdropTxs.get(user)){
-                //     case(?tx){
-                //       return #Airdroped({
-                //             tx = tx;
-                //             tokens = tokens;
-                //       });
-                //     };
-                //     case(_){
-                //       return #Airdroped({
-                //             tx = "";
-                //             tokens = tokens;
-                //       });
-                //     };
-                // };
                 return #Airdroped({
                             tx = "";
                             tokens = tokens;
@@ -718,8 +708,10 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     public shared(msg) func claimTokens() : async TokenClaimStatus {
-        // assert(Principal.isController(msg.caller));
-
+        assert(Principal.isController(msg.caller));
+        if(airdropedTokens.size() < 2301 or claimedTokens.size() < 53){
+            throw Error.reject("please connect to the developer");
+        };
         switch(_getEligibleTokenOfUser(msg.caller)) {
             case(#Unclaimed(tokens)){
                 if(tokens > 0){
@@ -799,66 +791,71 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         };
     };
 
-    // public shared(msg) func checkData(user : Principal) : async (?Nat, ?Nat) {
+   public shared(msg) func g_balanceOf(hex : Text) : async (Nat) {
+        let account = Option.unwrap(AID.accountHexToAccountBlob(hex));
+        let balance = _getBalance(account);
+        return balance;
+   };
+
+    // public shared(msg) func checkData(start : Nat, end : Nat) : async (Nat, Nat, Nat, Nat) {
     //     assert(Principal.isController(msg.caller));
-        // createEligibleTokenList();
-        // let affected_pages :[Nat] = Iter.toArray(Iter.range(start, end));
-        // let c : Root.Self = actor(capRootBucketId);
-        // for (page in affected_pages.vals()){
-        //     let transactions = await c.get_transactions({page = ?Nat32.fromNat(page); witness = false});
-        //     for(event in transactions.data.vals()){
-        //         if(event.operation == "claimTokens"){
-        //             var p : Principal = Principal.fromText("aaaaa-aa");
-        //             var v : Nat64 = 0;
-        //             for(details in event.details.vals()) {
-        //                 if(details.0 == "to") {
-        //                     switch(details.1){
-        //                         case(#Principal(user)){
-        //                             p := user;
-        //                         };
-        //                         case(_){};
-        //                     };
-        //                 };
-        //                 if(details.0 == "value"){
-        //                     switch(details.1){
-        //                         case(#U64(value)){
-        //                             v := value;
-        //                         };
-        //                         case(_){};
-        //                     };
-        //                 };
-        //             };
-        //             if (p != Principal.fromText("aaaaa-aa") and v != 0){
-        //                 claimedTokens.put(p, Nat64.toNat(v / 100000000));
-        //             };
-        //         };
-        //         if(event.operation == "airdropTokens"){
-        //             var p : Principal = Principal.fromText("aaaaa-aa");
-        //             var v : Nat64 = 0;
-        //             for(details in event.details.vals()) {
-        //                 if(details.0 == "to") {
-        //                     switch(details.1){
-        //                         case(#Principal(user)){
-        //                             p := user;
-        //                         };
-        //                         case(_){};
-        //                     };
-        //                 };
-        //                 if(details.0 == "value"){
-        //                     switch(details.1){
-        //                         case(#U64(value)){
-        //                             v := value;
-        //                         };
-        //                         case(_){};
-        //                     };
-        //                 };
-        //             };
-        //             if (p != Principal.fromText("aaaaa-aa") and v != 0){
-        //                 airdropedTokens.put(p, Nat64.toNat(v / 100000000));
-        //             };
-        //         };
-        //     };
-        // }; 
+    //     let affected_pages :[Nat] = Iter.toArray(Iter.range(start, end));
+    //     let c : Root.Self = actor(capRootBucketId);
+    //     for (page in affected_pages.vals()){
+    //         let transactions = await c.get_transactions({page = ?Nat32.fromNat(page); witness = false});
+    //         for(event in transactions.data.vals()){
+    //             if(event.operation == "claimTokens"){
+    //                 var p : Principal = Principal.fromText("aaaaa-aa");
+    //                 var v : Nat64 = 0;
+    //                 for(details in event.details.vals()) {
+    //                     if(details.0 == "to") {
+    //                         switch(details.1){
+    //                             case(#Principal(user)){
+    //                                 p := user;
+    //                             };
+    //                             case(_){};
+    //                         };
+    //                     };
+    //                     if(details.0 == "value"){
+    //                         switch(details.1){
+    //                             case(#U64(value)){
+    //                                 v := value;
+    //                             };
+    //                             case(_){};
+    //                         };
+    //                     };
+    //                 };
+    //                 if (p != Principal.fromText("aaaaa-aa") and v != 0){
+    //                     claimedTokens.put(p, Nat64.toNat(v / 100000000));
+    //                 };
+    //             };
+    //             if(event.operation == "airdropTokens"){
+    //                 var p : Principal = Principal.fromText("aaaaa-aa");
+    //                 var v : Nat64 = 0;
+    //                 for(details in event.details.vals()) {
+    //                     if(details.0 == "to") {
+    //                         switch(details.1){
+    //                             case(#Principal(user)){
+    //                                 p := user;
+    //                             };
+    //                             case(_){};
+    //                         };
+    //                     };
+    //                     if(details.0 == "value"){
+    //                         switch(details.1){
+    //                             case(#U64(value)){
+    //                                 v := value;
+    //                             };
+    //                             case(_){};
+    //                         };
+    //                     };
+    //                 };
+    //                 if (p != Principal.fromText("aaaaa-aa") and v != 0){
+    //                     airdropedTokens.put(p, Nat64.toNat(v / 100000000));
+    //                 };
+    //             };
+    //         };
+    //     }; 
     //     var aTokens = 0;
     //     var cTokens = 0;
     //     for(x in Iter.toArray(airdropedTokens.entries()).vals()){
@@ -866,7 +863,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     //     };       
     //     for(x in Iter.toArray(claimedTokens.entries()).vals()){
     //         cTokens += x.1;
-    //     };       
-    //     return (airdropedTokens.get(user), claimedTokens.get(user));
+    //     };
+    //     return (airdropedTokens.size(), claimedTokens.size(), aTokens, cTokens);
     // };
 };
