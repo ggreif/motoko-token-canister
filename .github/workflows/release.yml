@@ -26,12 +26,12 @@ jobs:
       run: pip3 install --user pytest
     # - name: Run tests
     #   run: python3 -m unittest tests/icrc1_tests.py
+    - name: Gzip wasm 
+      run: gzip -fckn ./.dfx/ic/canisters/token/token.wasm > token.wasm.gz
     - name: Compute Wasm Hash
-      run: shasum -a 256 ./.dfx/ic/canisters/token/token.wasm  | cut -d ' ' -f 1 > token.wasm.shasum
+      run: shasum -a 256 ./token.wasm.gz  | cut -d ' ' -f 1 > token.wasm.gz.shasum
     - name: Print Wasm Hash
-      run: cat ./token.wasm.shasum
-    - name: Copy Wasm Build
-      run: cp ./.dfx/ic/canisters/token/token.wasm token.wasm
+      run: cat ./token.wasm.gz.shasum
     - name: Upload to release
       uses: svenstaro/upload-release-action@v2
       with:
