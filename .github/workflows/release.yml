@@ -3,7 +3,7 @@ on:
         tags:
             - '*'
         branches:
-            - 'fix/gh-release'
+            - 'main'
 jobs:
   token-build:
     runs-on: ubuntu-latest 
