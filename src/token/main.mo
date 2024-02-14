@@ -1,5 +1,4 @@
 
-import Prim "mo:⛔";
 import Trie "mo:base/Trie";
 import Principal "mo:base/Principal";
 import Array "mo:base/Array";
@@ -95,7 +94,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     private var drc202 = DRC202.DRC202({EN_DEBUG = false; MAX_CACHE_TIME = 3 * 30 * 24 * 3600 * 1000000000; MAX_CACHE_NUMBER_PER = 100; MAX_STORAGE_TRIES = 2; }, standard_);
     private stable var drc202_lastStorageTime : Time.Time = 0;
     
-    let motoko_nft : MotokoNft.Self = actor("oeee4-qaaaa-aaaak-qaaeq-cai"); // official motok nft snapshot
+    let motoko_nft : MotokoNft.Self = actor("oeee4-qaaaa-aaaak-qaaeq-cai"); // official Motoko NFT snapshot
 
     /* 
     * Local Functions
@@ -210,7 +209,6 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                     case(_){};
                 };
             };
-            case(_){};
         };
         let nonce = index;
         let txid = drc202.generateTxid(Principal.fromActor(this), caller, nonce);
@@ -665,20 +663,14 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     private func _getEligibleTokenOfUser(user: Principal) : TokenClaimStatus {
         switch(airdropedTokens.get(user)) {
             case(?tokens) {
-                return #Airdroped({
-                            tx = "";
-                            tokens = tokens;
-                 });
+                return #Airdroped { tx = ""; tokens };
             };
             case(_){};
         };
         switch(claimedTokens.get(user)){
             case(?tokens){
 
-                return #Claimed({
-                    tx = "";
-                    tokens = tokens;
-                });
+                return #Claimed { tx = ""; tokens };
             };
             case(_){};
         };
@@ -686,11 +678,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     };
 
     public shared query(msg) func getEligibleTokenOfUser(user : Principal) : async TokenClaimStatus {
-         switch(_getEligibleTokenOfUser(user)) {
-            case(#Unclaimed(tokens)){ return #Unclaimed(tokens); };
-            case(#Airdroped(status)){ return #Airdroped(status); };
-            case(#Claimed(status)){ return #Claimed(status); };
-         };
+         _getEligibleTokenOfUser(user)
     };
 
     // updates
@@ -731,10 +719,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                                 ]
                             );
 
-                            return #Claimed({
-                                tx = tx;
-                                tokens = tokens;
-                            });
+                            return #Claimed { tx; tokens };
                         };
                         case(_){
                             throw Error.reject("unexpected error");
@@ -773,10 +758,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                                     ("fee", #U64(u64(fee_)))
                                 ]
                             );
-                            return #Airdroped({
-                             tx = tx;
-                             tokens = tokens;
-                            });
+                            return #Airdroped { tx; tokens };
                         };
                         case(_){
                             throw Error.reject("unexpected error");
