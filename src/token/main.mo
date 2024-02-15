@@ -651,10 +651,9 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     private func findEligibleTokens(user: Principal) : Nat {
         var totalTokens : Nat = 0;
         let accountIdx : [Nat] = Iter.toArray(Iter.range(0, 50));
-        var address : Text = "";
-        for(i in accountIdx.vals()) {
+        for (i in accountIdx.vals()) {
           let subaccount_array : [Nat8] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,Nat8.fromNat(i)];
-          address := EAID.fromPrincipal(user, ?subaccount_array);
+          let address = EAID.fromPrincipal(user, ?subaccount_array);
           totalTokens += Option.get(eligibleTokens.get(address), 0);
         };
         return totalTokens;
