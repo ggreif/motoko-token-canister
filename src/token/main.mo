@@ -1,4 +1,3 @@
-
 import Trie "mo:base/Trie";
 import Principal "mo:base/Principal";
 import Array "mo:base/Array";
@@ -120,6 +119,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             };
         };
     };
+
     private func _setBalance(_a: AccountId, _v: Nat): (){
         let originalValue = _getBalance(_a);
         let now = Time.now();
@@ -139,6 +139,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         };
         return true;
     };
+
     private func _chargeFee(_caller: AccountId): Bool{
         if(fee_ > 0) {
             if (_getBalance(_caller) >= fee_){
@@ -150,6 +151,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         };
         return true;
     };
+
     private func _send(_from: AccountId, _to: AccountId, _value: Nat, _isCheck: Bool): Bool{
         var balance_from = _getBalance(_from);
         if (balance_from >= _value){
@@ -165,6 +167,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             return false;
         };
     };
+
     private func _mint(_to: AccountId, _value: Nat): Bool{
         var balance_to = _getBalance(_to);
         balance_to += _value;
@@ -172,6 +175,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         totalSupply_ += _value;
         return true;
     };
+
     private func _burn(_from: AccountId, _value: Nat, _isCheck: Bool): Bool{
         var balance_from = _getBalance(_from);
         if (balance_from >= _value){
@@ -202,7 +206,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             // drc202 limitations
             return #err({ code=#UndefinedError; message="The length of _data must be less than 2 KB"; });
         };
-        switch(_operation){
+        switch _operation {
             case(#transfer(operation)){
                 switch(operation.action){
                     case(#mint){ effectiveFee := #noFee;};
@@ -216,14 +220,14 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             msgCaller = ?_msgCaller; 
             caller = caller;
             timestamp = Time.now();
-            index = index;
-            nonce = nonce;
-            txid = txid;
+            index;
+            nonce;
+            txid;
             gas = effectiveFee;
             transaction = {
-                from = from;
-                to = to;
-                value = value; 
+                from;
+                to;
+                value; 
                 operation = _operation;
                 data = _data;
             };
@@ -232,7 +236,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
             case(#transfer(operation)){
                 switch(operation.action){
                     case(#send){
-                        if (not(_send(from, to, value, true))){
+                        if (not _send(from, to, value, true)){
                             return #err({ code=#InsufficientBalance; message="Insufficient Balance"; });
                         };
                         ignore _send(from, to, value, false);
@@ -246,7 +250,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                         as := AID.arrayAppend(as, [caller]);
                     };
                     case(#burn){
-                        if (not(_burn(from, value, true))){
+                        if (not _burn(from, value, true)){
                             return #err({ code=#InsufficientBalance; message="Insufficient Balance"; });
                         };
                         ignore _burn(from, value, false);
@@ -259,7 +263,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         // insert for drc202 record
         drc202.put(txn);
         index += 1;
-        return #ok(txid);
+        #ok txid;
     };
 
     private func _transferFrom(__caller: Principal, _from: AccountId, _to: AccountId, _value: Amount, _sa: ?Sa, _data: ?Data) : 
@@ -270,10 +274,10 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
         let operation: Operation = if(_to == owner_){ 
             #transfer({ action = #burn; });
         } else {
-           #transfer({ action = #send; });
+            #transfer({ action = #send; });
         };
         // check fee
-        if(not(_checkFee(from, _value))){
+        if (not _checkFee(from, _value)){
             return #err({ code=#InsufficientBalance; message="Insufficient Balance"; });
         };
         // transfer
@@ -477,14 +481,14 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     * Genesis
     */
     private stable var genesisCreated: Bool = false;
-    if (not(genesisCreated)){
+    if (not genesisCreated) {
         balances := Trie.put(balances, keyb(owner_), Blob.equal, totalSupply_).0;
         var txn: TxnRecord = {
             txid = Blob.fromArray([0:Nat8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
             msgCaller = ?msg.caller;
             caller = AID.principalToAccountBlob(msg.caller, null);
             timestamp = Time.now();
-            index = index;
+            index;
             nonce = 0;
             gas = #noFee;
             transaction = {
@@ -521,7 +525,7 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
                 __drc202DataNew := null;
             };
             case(_){
-                if (__drc202Data.size() > 0){
+                if (__drc202Data.size() > 0) {
                     drc202.setData(__drc202Data[0]);
                     __drc202Data := [];
                 };
@@ -595,39 +599,35 @@ shared(msg) actor class ICRC1Canister(args : {tokenOwner : Principal}) = this {
     // Hail the Vikings 
     public composite query func get_transactions(page : Nat32) : async Root.GetTransactionsResponseBorrowed {
         let c : Root.Self = actor(capRootBucketId);
-        let transactions = await c.get_transactions({page = ?page; witness = false});
-        return transactions;
+        await c.get_transactions { page = ?page; witness = false };
     };
 
     public composite query func get_user_transactions(user : Principal, page : Nat32) : async Root.GetTransactionsResponseBorrowed {
         let c : Root.Self = actor(capRootBucketId);
-        let transactions = await c.get_user_transactions({page = ?page; user = user; witness = false});
-        return transactions;
+        await c.get_user_transactions { page = ?page; user; witness = false };
     };
-
 
     public composite query func get_transaction_pages() : async Int64 {
         let c : Root.Self = actor(capRootBucketId);
         let total_txs = Int64.fromNat64(await c.size());
         let pages = total_txs / 64;
-        return if(Int64.rem(total_txs, 64) > 0) { pages + 1 } else { pages };
+        if (Int64.rem(total_txs, 64) > 0) { pages + 1 } else { pages };
     };
 
     public composite query func get_transaction(txid : Nat64) : async Root.GetTransactionResponse {
         let c : Root.Self = actor(capRootBucketId);
-        let transaction =  await c.get_transaction({id=txid; witness=false;});
-        return transaction;
+        await c.get_transaction { id = txid; witness = false };
     };
 
     public query func unclaimedTokens() : async Nat {
-        return _getBalance(owner_);
+        _getBalance(owner_);
     };
 
     public query func getRawSnapshot() : async {
         snapshot : [(MotokoNft.TokenIndex, MotokoNft.AccountIdentifier)];
         snapshot_time : Int
     } {
-        return {
+        {
             snapshot = raw_snapshot;
             snapshot_time = raw_snapshot_time
         };
